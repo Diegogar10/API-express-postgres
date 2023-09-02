@@ -1,14 +1,17 @@
-const faker = require('faker');
+//const faker = require('faker');
 const boom = require('@hapi/boom');
+
+//const pool = require('./../libs/postgres.pool');
+const { models } = require('./../libs/sequelize');
+const { Op } = require('sequelize');
 
 class ProductsService {
 
   constructor() {
-    this.products = []
-    this.generate();
+    //this.generate();
   }
 
-  generate() {
+  /* generate() {
     const limit = 100;
     for (let index = 0; index < limit; index++ ) {
       this.products.push({
@@ -18,23 +21,61 @@ class ProductsService {
         image: faker.image.imageUrl(),
       })
     }
-  }
+  } */
 
-  async create(data) {
+  /* async create(data) {
     const newProduct = {
       id: faker.datatype.uuid(),
       ...data
     }
     this.products.push(newProduct);
     return newProduct;
+  } */
+
+  /* async find() {
+    const query = 'SELECT * FROM tasks';
+    const rta = await this.pool.query(query);
+    return rta.rows;
+  } */
+
+  async create(data) {
+    const products = await this.find({limit:null,offset:null});
+    const newData = {
+      ...data,
+      id: products.length + 1
+    }
+    const newProduct = await models.Product.create(newData);
+    return newProduct;
   }
 
-  find() {
-    return new Promise((resolve, reject)=>{
-      setTimeout(()=>{
-        resolve(this.products);
-      }, 5000);
-    });
+  async find(query) {
+    //const query = 'SELECT * FROM tasks';
+    //const [data, metadata]= await sequelize.query(query);
+    const options = {
+      include:['category'],
+      where: {}
+    }
+    const { limit, offset } = query;
+    if (limit && offset) {
+      options.limit = limit;
+      options.offset = offset;
+    }
+
+    const { price } = query;
+    if (price) {
+      options.where.price = price;
+    }
+
+    const { price_min, price_max } = query;
+    if (price_min && price_max) {
+      options.where.price = {
+        [Op.gte]: price_min,
+        [Op.lte]: price_max,
+      };
+    }
+
+    const products = await models.Product.findAll(options);
+    return products;
   }
 
   async findOne(id) {
